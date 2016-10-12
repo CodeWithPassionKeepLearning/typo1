@@ -46,4 +46,3 @@ describe Category do
   end
 end
 
-

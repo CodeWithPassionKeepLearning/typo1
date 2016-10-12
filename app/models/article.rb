@@ -71,6 +71,14 @@ class Article < Content
     end
   end
 
+  def merge!(other_id)
+    other = get_other_article_for_merge(other_id)
+    self.body = self.body + ' ' + other.body
+    merge_comments(other_id)
+    other.destroy
+    self.save
+  end
+
   def set_permalink
     return if self.state == 'draft'
     self.permalink = self.title.to_permalink if self.permalink.nil? or self.permalink.empty?
@@ -466,4 +474,22 @@ class Article < Content
     to = to - 1 # pull off 1 second so we don't overlap onto the next day
     return from..to
   end
+
+  private
+
+    def merge_comments(other_id)
+      comments = Comment.where(:article_id => other_id)
+      comments.each do |comment|
+        comment.article_id = self.id
+        comment.article = self
+        comment.save
+      end
+    end
+
+    def get_other_article_for_merge(other_id)
+      raise ArgumentError, 'Cannot merge article with itself' if other_id.to_i == self.id
+      other = Article.find(other_id)
+      raise ArgumentError, 'Article not found for merge' if other.nil?
+      other
+    end
 end

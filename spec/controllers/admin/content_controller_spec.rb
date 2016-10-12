@@ -671,4 +671,66 @@ describe Admin::ContentController do
 
     end
   end
+
+# Jimmy's tests... if this were an actual pull request, I'd put them in the blocks above under 
+# describe user not admin and describe user is admin for DRY purposes (I'm repeating before blocks here)
+# but since this is just for the SaaS class, I prefer to have them all in one place down here for easy editing.
+  
+  describe "merge action" do    
+    context "when user is not administrator" do
+      before do
+        Factory(:blog)
+        @user = Factory(:user, :text_filter => Factory(:markdown), :profile => Factory(:profile_publisher))
+        request.session = {:user => @user.id}
+      end
+
+      it "redirects to the article edit page" do
+        article = double('article')
+        Article.stub(:find).and_return(article)
+        post :merge, 'id' => '1', 'merge_with' => '3' 
+        flash.should_not be_nil
+        response.should redirect_to(:action => 'edit', :id => 1)
+      end
+    end
+
+    context "when user is administrator" do
+      before do
+        Factory(:blog)
+        Profile.delete_all
+        @user = Factory(:user, :text_filter => Factory(:markdown), :profile => Factory(:profile_admin, :label => Profile::ADMIN))
+        @user_a = Factory(:user, :login => 'user_a')
+        @user_b = Factory(:user, :login => 'user_b')
+        @user.editor = 'simple'
+        @user.save
+        @article_a = Factory(:article, :title => 'title A', :body => 'content A', :user => @user_a)
+        @article_b = Factory(:article, :title => 'title B', :body => 'body B', :user => @user_b)
+        request.session = {:user => @user.id}
+      end
+
+      it "should find article with the id" do
+        Article.should_receive(:find).with('1').and_return(@article_a)
+        @article_a.stub(:merge!)
+        post :merge, 'id' => '1', 'merge_with' => '2'
+      end
+
+      it "should raise error if article A does not exist" do
+        fake_id = 52
+        Article.stub(:find).and_return(nil)
+        expect{post :merge, 'id' => fake_id, 'merge_with' => '2'}.to raise_error(ArgumentError)
+      end
+
+      it "should ask article A to merge with other article B" do
+        Article.stub(:find).with('1').and_return(@article_a)
+        @article_a.should_receive(:merge!).with('2')
+        post :merge, 'id' => '1', 'merge_with' => '2'
+      end
+
+      it "should redirect to newly merged article" do
+        Article.stub(:find).with('1').and_return(@article_a)
+        @article_a.stub(:merge!).and_return(@article_a)
+        post :merge, 'id' => '1', 'merge_with' => '2'
+        response.should redirect_to(:action => 'edit', :id => 1)
+      end
+    end
+  end
 end

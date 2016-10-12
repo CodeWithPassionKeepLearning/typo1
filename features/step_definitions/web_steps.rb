@@ -33,7 +33,7 @@ World(WithinHelpers)
 
 Given /^the blog is set up$/ do
   Blog.default.update_attributes!({:blog_name => 'Teh Blag',
-                                   :base_url => 'http://localhost:3000'});
+                                   :base_url => 'http://jimmy.local:3000'});
   Blog.default.save!
   User.create!({:login => 'admin',
                 :password => 'aaaaaaaa',
@@ -41,12 +41,30 @@ Given /^the blog is set up$/ do
                 :profile_id => 1,
                 :name => 'admin',
                 :state => 'active'})
+  User.create!({:login => 'someone',
+                :password => 'bbbbbbbbbb',
+                :email => 'jane@snow.com',
+                :profile_id => 2,
+                :name => 'nonadmin',
+                :state => 'active'})
 end
 
 And /^I am logged into the admin panel$/ do
   visit '/accounts/login'
   fill_in 'user_login', :with => 'admin'
   fill_in 'user_password', :with => 'aaaaaaaa'
+  click_button 'Login'
+  if page.respond_to? :should
+    page.should have_content('Login successful')
+  else
+    assert page.has_content?('Login successful')
+  end
+end
+
+And /^I am logged into the admin panel as a non administrator$/ do
+  visit '/accounts/login'
+  fill_in 'user_login', :with => 'someone'
+  fill_in 'user_password', :with => 'bbbbbbbbbb'
   click_button 'Login'
   if page.respond_to? :should
     page.should have_content('Login successful')
